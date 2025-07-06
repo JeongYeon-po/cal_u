@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cal-U | 모임 일정 조율</title>
+  <link rel="stylesheet" href="style.css" />
+<!-- Firebase v8 SDK (CDN 방식, firebase.* 접근 가능) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCaRdS6DWMNd8LyGvWnO61MsOp49QuUFKU",
+    authDomain: "cal-u-c17a9.firebaseapp.com",
+    projectId: "cal-u-c17a9",
+    storageBucket: "cal-u-c17a9.firebasestorage.app",
+    messagingSenderId: "237824369858",
+    appId: "1:237824369858:web:86d924f7dcac9a4163075b",
+    measurementId: "G-825J221WP5"
+  };
+
+  // ✅ v8 방식 초기화
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+
+
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 헤더: 모임 이름 -->
+    <div class="header">
+      <label><b>모임 이름:</b></label>
+      <input type="text" id="meetingName" placeholder="모임 이름을 입력하세요" />
+ <button id="copyLinkBtn">링크 복사</button>
+    </div>
+ 
+
+    <!-- 사용자 정보: 이름·색상·상관없음 -->
+    <div class="user-info">
+      <label><b>참석자 이름:</b></label>
+      <input type="text" id="userName" placeholder="이름 입력" />
+      <select id="userColor">
+        <option value="red">🔴 빨간색</option>
+        <option value="blue">🔵 파란색</option>
+        <option value="green">🟢 초록색</option>
+        <option value="orange">🟠 주황색</option>
+        <option value="purple">🟣 보라색</option>
+      </select>
+      <label><input type="checkbox" id="noPreference" /> 상관없음</label>
+<label style="margin-left:10px;"><input type="checkbox" id="blockSat"/> 토요일 불가</label>
+     <label style="margin-left:10px;"><input type="checkbox" id="blockSun"/> 일요일 불가</label>
+    </div>
+
+    <hr />
+
+    <!-- 달력 네비게이션: 이전·월표시·다음 + 리셋 -->
+    <div class="month-nav">
+      <button id="prevMonth">◀</button>
+      <span id="yearMonth"></span>
+      <button id="nextMonth">▶</button>
+      <button id="resetBtn" class="btn-reset">리셋</button>
+    </div>
+
+    <!-- 요일 헤더 -->
+    <div class="calendar-days">
+      <div class="day red">일</div>
+      <div class="day">월</div>
+      <div class="day">화</div>
+      <div class="day">수</div>
+      <div class="day">목</div>
+      <div class="day">금</div>
+      <div class="day blue">토</div>
+    </div>
+
+    <!-- 이번달 달력 그리드 -->
+    <div id="calendar" class="calendar-grid"></div>
+
+    <!-- 다음달 보기 토글 -->
+    <button id="toggleNextMonthBtn" class="btn-toggle">다음달 보기</button>
+
+    <!-- 다음달 달력 (초기 숨김) -->
+    <div id="nextMonthContainer" style="display:none;">
+      <div class="month-nav">
+        <span id="yearMonthNext"></span>
+      </div>
+      <div class="calendar-days">
+        <div class="day red">일</div>
+        <div class="day">월</div>
+        <div class="day">화</div>
+        <div class="day">수</div>
+        <div class="day">목</div>
+        <div class="day">금</div>
+        <div class="day blue">토</div>
+      </div>
+      <div id="calendarNext" class="calendar-grid"></div>
+    </div>
+
+    <!-- 결과 제출 버튼 -->
+    <button id="submitBtn" class="btn-submit">결과 제출하기</button>
+
+    <!-- 결과 테이블 -->
+    <div class="result">
+      <h3>📅 유저별 선택 현황</h3>
+      <div class="table-wrapper">
+        <table id="resultTable">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>원하는 날 ✅</th>
+              <th>가능한 날 👍</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,151 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+.container {
+  max-width: 800px;
+  margin: auto;
+  padding: 20px;
+}
+.header, .user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.user-info input#meetingName { width: 200px; }
+.user-info input#userName   { width: 140px; }
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 1.2em;
+  position: relative;
+}
+.btn-reset {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: #ffdddd;
+  border: 1px solid #ff8888;
+  color: #a00;
+  padding: 4px 8px;
+  font-size: 0.8em;
+  cursor: pointer;
+}
+.btn-reset:hover { background: #ffcccc; }
+
+.calendar-days, .calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  text-align: center;
+}
+.day { padding: 5px 0; font-weight: bold; }
+.red { color: red; }
+.blue { color: blue; }
+
+.date {
+  padding: 10px;
+  border: 1px solid #ddd;
+  min-height: 24px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.date.today {
+  border: 2px solid #6495ED;
+  font-weight: bold;
+}
+.date.past {
+  background: #f5f5f5;
+  color: #ccc;
+  pointer-events: none;
+}
+.date.preferred   { background: #90EE90; color: #000; }
+.date.unavailable { background: #F08080; color: #fff; }
+
+.btn-toggle, .btn-submit {
+  width: 100%;
+  padding: 12px;
+  margin: 15px 0;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btn-toggle {
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+}
+.btn-toggle:hover { background: #e0e0e0; }
+.btn-submit {
+  background: #6495ED;
+  color: #fff;
+  border-radius: 5px;
+}
+.btn-submit:hover { background: #4169E1; }
+
+/* 결과 테이블 가로 스크롤 + 열 너비 지정 */
+.table-wrapper {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.result th:first-child,
+.result td:first-child {
+  width: 120px;
+  white-space: nowrap;
+}
+.result th, .result td {
+  border: 1px solid #ddd;
+  padding: 6px 8px;
+  text-align: left;
+  word-break: break-word;
+}
+.result thead tr { background: #f2f2f2; }
+
+/* 1) 링크 복사 버튼 */
+#copyLinkBtn {
+  margin-left: 8px;
+  padding: 3px 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+/* 2) 주말 불가 체크박스 라벨 정렬 */
+.user-info label {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ✅ 모든 유저가 가능한 날 */
+.date.all-available {
+  background: gold;
+  box-shadow: inset 0 0 0 2px #aaa;
+}
+
+/* ✅ 원하는 날 전원 일치 */
+.date.all-preferred {
+  background: #32CD32; /* limegreen */
+  color: #fff;
+  font-weight: bold;
+  box-shadow: inset 0 0 0 2px #006400;
+}
+
+.date.unavailable {
+  background: #D3D3D3 !important;
+  color: #000 !important;
+  font-weight: bold;
+  text-decoration: line-through;
+  box-shadow: inset 0 0 0 2px #999;
+}
+
+.date.user-unavailable {
+  background-color: #ddd;  /* 회색 배경 */
+  color: #888;             /* 어두운 회색 글자 */
+}
