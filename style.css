@@ -149,3 +149,30 @@ body {
   background-color: #ddd;  /* 회색 배경 */
   color: #888;             /* 어두운 회색 글자 */
 }
+
+/* 스크린샷 모드 스타일 */
+.summary-mode .header,
+.summary-mode .user-info,
+.summary-mode .month-nav #prevMonth,
+.summary-mode .month-nav #nextMonth,
+.summary-mode #toggleNextMonthBtn,
+.summary-mode #submitBtn {
+  display: none; /* 스크린샷에 불필요한 요소들 숨기기 */
+}
+
+/* 스크린샷 모드일 때만 '뒤로가기' 버튼 보이기 */
+.summary-mode #backBtn {
+  display: block!important;
+}
+
+/* 스크린샷 모드에서 선택되지 않은 날짜 흐리게 */
+.summary-mode .date:not(.past):not(.all-available):not(.all-preferred) {
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* 중간 집계 전용 테이블 행 스타일 */
+.summary-row {
+  background-color: #FFFACD; /* 레몬 쉬폰 색 */
+  font-weight: bold;
+}

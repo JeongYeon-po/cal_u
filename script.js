@@ -300,4 +300,50 @@ document.addEventListener("DOMContentLoaded", () => {
        });
     }
   });
+
+  // --- 중간 집계 스크린샷 모드 로직 ---
+  const summaryBtn = document.getElementById('summaryBtn');
+  const backBtn = document.getElementById('backBtn');
+  const container = document.querySelector('.container');
+  const resultTableBody = document.getElementById('resultTable').tBodies[0];
+
+  summaryBtn.addEventListener('click', () => {
+    // 1. 스크린샷 모드 클래스 추가
+    container.classList.add('summary-mode');
+
+    // 2. '선호'/'가능' 날짜 데이터 수집
+    const preferredDates = [];
+    const availableDates = [];
+
+    document.querySelectorAll('.date:not(.past)').forEach(cell => {
+      const day = String(+cell.dataset.date.slice(8)); // 날짜만 추출 (예: '5')
+      if (cell.classList.contains('all-preferred')) {
+        preferredDates.push(day);
+      } else if (cell.classList.contains('all-available')) {
+        availableDates.push(day);
+      }
+    });
+
+    // 3. 결과 테이블에 '중간 집계' 행 추가
+    const summaryRow = resultTableBody.insertRow(0); // 테이블 맨 위에 행 추가
+    summaryRow.id = 'summaryRow'; // 나중에 삭제하기 쉽도록 ID 부여
+    summaryRow.className = 'summary-row'; // CSS 스타일 적용
+    
+    summaryRow.innerHTML = `
+      <td><strong>📊 중간집계</strong></td>
+      <td>${preferredDates.join(', ') || '-'}</td>
+      <td>${availableDates.join(', ') || '-'}</td>
+    `;
+  });
+
+  backBtn.addEventListener('click', () => {
+    // 1. 스크린샷 모드 클래스 제거
+    container.classList.remove('summary-mode');
+
+    // 2. 추가했던 '중간 집계' 행 삭제
+    const summaryRow = document.getElementById('summaryRow');
+    if (summaryRow) {
+      summaryRow.remove();
+    }
+  });
 });
