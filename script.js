@@ -26,10 +26,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const prevBtn = document.getElementById("prevMonth");
   const nextBtn = document.getElementById("nextMonth");
   const toggleBtn = document.getElementById("toggleNextMonthBtn");
+  const nc = document.getElementById("nextMonthContainer");
   const resetBtn = document.getElementById("resetBtn");
+  const newCalBtn = document.getElementById("newCalBtn");
   const submitBtn = document.getElementById("submitBtn");
   const tbl = document.getElementById("resultTable");
-  const noChk = document.getElementById("noPreference");
+  // const noChk = document.getElementById("noPreference"); // 이 줄은 삭제하거나 주석 처리
+
+  // ✅ 아래 3줄 추가
+  const noBtn = document.getElementById("noPreference");
+  const satBtn = document.getElementById("blockSat");
+  const sunBtn = document.getElementById("blockSun");
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let current = new Date(today.getFullYear(), today.getMonth(), 1);
   
@@ -44,6 +51,34 @@ document.addEventListener("DOMContentLoaded", () => {
   ]);
 
   // --- 달력 렌더링 함수 ---
+  function onDateClick(cell) {
+     // [추가] 확정된 날짜를 클릭했을 때의 로직
+        if (cell.classList.contains('finalized')) {
+         if (confirm(`"${cell.dataset.date}" 날짜 확정을 취소하시겠습니까?`)) {
+            // DB에서 finalizedDate 필드를 삭제하여 '미확정' 상태로 되돌립니다.
+            db.collection("calendars").doc(pin).update({
+                finalizedDate: firebase.firestore.FieldValue.delete()
+            }).catch(err => alert("취소 중 오류 발생: " + err));
+        }
+        return; // 확정 취소 로직 후 함수 종료
+    }
+    // '중간 집계' 모드일 때만 최종 결정 로직이 작동
+    if (container.classList.contains('summary-mode')) {
+        if (cell.classList.contains('all-available') || cell.classList.contains('all-preferred')) {
+            finalDateInput.value = cell.dataset.date;
+            finalDecisionBox.style.display = 'block';
+        }
+    } else { // 일반 모드에서는 기존의 투표 로직 실행
+        cell.classList.remove("all-available", "all-preferred", "unavailable");
+        if (cell.classList.contains("preferred")) {
+            cell.classList.replace("preferred", "user-unavailable");
+        } else if (cell.classList.contains("user-unavailable")) {
+            cell.classList.remove("user-unavailable");
+        } else {
+            cell.classList.add("preferred");
+        }
+    }
+}
   function renderCal(date, container, labelEl) {
     container.innerHTML = "";
     const Y = date.getFullYear(), M = date.getMonth();
@@ -72,17 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
       else if (wd === 6) cell.style.color = "blue";
       
       if (!cell.classList.contains("past")) {
-        cell.addEventListener("click", () => {
-          cell.classList.remove("all-available", "all-preferred", "unavailable");
-          
-          if (cell.classList.contains("preferred")) {
-            cell.classList.replace("preferred", "user-unavailable");
-          } else if (cell.classList.contains("user-unavailable")) {
-            cell.classList.remove("user-unavailable");
-          } else {
-            cell.classList.add("preferred");
-          }
-        });
+       cell.addEventListener("click", () => onDateClick(cell));
       }
       container.appendChild(cell);
     }
@@ -100,16 +125,17 @@ document.addEventListener("DOMContentLoaded", () => {
     renderCal(current, calThis, yM);
     const nxt = new Date(current.getFullYear(), current.getMonth() + 1, 1);
     renderCal(nxt, calNext, yMNext);
+    applyWeekendBlocks(); // ✅ 달력을 모두 그린 후, 마지막에 한 번만 실행합니다.
   }
 
   // --- 버튼 이벤트 핸들러 ---
   prevBtn.onclick = () => { current.setMonth(current.getMonth() - 1); renderAll(); };
   nextBtn.onclick = () => { current.setMonth(current.getMonth() + 1); renderAll(); };
   toggleBtn.onclick = () => {
-    const nc = document.getElementById("nextMonthContainer");
-    const show = nc.style.display === "none";
+   const show = nc.style.display === "none";
     nc.style.display = show ? "block" : "none";
     toggleBtn.textContent = show ? "다음달 접기" : "다음달 보기";
+    applyWeekendBlocks(show); // ✅ 다음 달 표시 상태 변경 시 주말 불가 업데이트
   };
   resetBtn.onclick = () => {
   const myName = document.getElementById("userName").value.trim();
@@ -139,8 +165,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 };
 
+newCalBtn.addEventListener('click', () => {
+  const newPin = prompt("사용할 새로운 캘린더 PIN을 입력하세요:");
+  // 사용자가 값을 입력하고 '확인'을 눌렀을 경우 (취소하거나 비워두지 않았을 경우)
+  if (newPin && newPin.trim() !== "") {
+    window.location.hash = newPin.trim(); // 주소창의 PIN을 사용자가 입력한 값으로 교체
+    window.location.reload();           // 페이지를 새로고침하여 새 캘린더 로드
+  }
+});
+
   // --- 나의 이전 투표내역을 불러오는 함수 ---
-  function loadMyVote() {
+ function loadMyVote() {
+    // 버튼 상태 초기화
+    noBtn.classList.remove('active');
+    satBtn.classList.remove('active');
+    sunBtn.classList.remove('active');
+
     const myName = document.getElementById("userName").value.trim();
     if (!myName) {
         alert("이름을 먼저 입력해주세요.");
@@ -151,23 +191,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = doc.data();
             const wantCurSet = new Set(data.wantCur || []);
             const wantNextSet = new Set(data.wantNext || []);
-            // '가능'은 '선호'와 '불가능'을 제외한 나머지 전부이므로, '불가능'만 알면 된다.
-            const unavailCurSet = new Set();
-            const unavailNextSet = new Set();
-            
-            // '불가능' 날짜를 추정한다 (wants와 cans에 모두 없는 날짜)
-            const allDays = Array.from({length: 31}, (_,i) => String(i+1));
             const canCurSet = new Set(data.canCur || []);
-            allDays.forEach(day => {
-                if(!wantCurSet.has(day) && !canCurSet.has(day)) {
-                    unavailCurSet.add(day);
-                }
-            });
             const canNextSet = new Set(data.canNext || []);
+            const allDays = Array.from({length: 31}, (_,i) => String(i+1));
+            const unavailCurSet = new Set();
             allDays.forEach(day => {
-                if(!wantNextSet.has(day) && !canNextSet.has(day)) {
-                    unavailNextSet.add(day);
-                }
+                if(!wantCurSet.has(day) && !canCurSet.has(day)) unavailCurSet.add(day);
+            });
+            const unavailNextSet = new Set();
+            allDays.forEach(day => {
+                if(!wantNextSet.has(day) && !canNextSet.has(day)) unavailNextSet.add(day);
             });
 
             document.querySelectorAll(".date:not(.past)").forEach(cell => {
@@ -177,12 +210,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (isNext) { // 다음달
                     if (wantNextSet.has(day)) cell.classList.add("preferred");
-                    if (unavailNextSet.has(day)) cell.classList.add("user-unavailable");
+                    else if (unavailNextSet.has(day)) cell.classList.add("user-unavailable");
                 } else { // 이번달
                     if (wantCurSet.has(day)) cell.classList.add("preferred");
-                    if (unavailCurSet.has(day)) cell.classList.add("user-unavailable");
+                    else if (unavailCurSet.has(day)) cell.classList.add("user-unavailable");
                 }
             });
+
+            // ✅ 데이터를 불러온 후, 마지막에 주말 필터 적용
+            applyWeekendBlocks(); 
+            
             isEditing = true;
             submitBtn.textContent = '수정 완료';
         } else {
@@ -216,7 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const dataToSave = {
         name: myName,
         color: document.getElementById("userColor").value,
-        noPreference: noChk.checked,
+        noPreference: noBtn.classList.contains('active'),
         wantCur, canCur, wantNext, canNext, 
         timestamp: new Date()
     };
@@ -228,6 +265,9 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(() => {
         console.log("✅ Firebase 저장/수정 성공");
           noChk.checked = false; // ✅ 자동으로 상관없음 체크 해제
+          noBtn.classList.remove('active'); // ✅ 추가: 상관없음 버튼 비활성화
+          satBtn.classList.remove('active'); // ✅ 추가: 토요일 불가 버튼 비활성화
+          sunBtn.classList.remove('active'); // ✅ 추가: 일요일 불가 버튼 비활성화
       });
   };
 
@@ -255,8 +295,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const curM = current.getMonth() + 1;
       const nxtM = current.getMonth() + 2 > 12 ? 1 : current.getMonth() + 2;
       const fmt = (mon, arr) => arr && arr.length ? `<strong>${mon}월</strong>: ${arr.join(", ")}` : "";
-      const wantParts = data.noPreference ? ["모든 날짜 가능"] : [fmt(curM, data.wantCur), fmt(nxtM, data.wantNext)].filter(Boolean);
-      const canParts = data.noPreference ? ["-"] : [fmt(curM, data.canCur), fmt(nxtM, data.canNext)].filter(Boolean);
+      const isNextMonthVisible = nc.style.display === 'block'; // ✅ 다음달 표시 여부 확인
+      const wantParts = data.noPreference ? ["모든 날짜 가능"] : [fmt(curM, data.wantCur), isNextMonthVisible ? fmt(nxtM, data.wantNext) : ''].filter(Boolean);
+      const canParts = data.noPreference ? ["-"] : [fmt(curM, data.canCur), isNextMonthVisible ? fmt(nxtM, data.canNext) : ''].filter(Boolean);
       c2.innerHTML = wantParts.join("<br>");
       c3.innerHTML = canParts.join("<br>");
 
@@ -308,31 +349,44 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultTableBody = document.getElementById('resultTable').tBodies[0];
 
   summaryBtn.addEventListener('click', () => {
-    // 1. 스크린샷 모드 클래스 추가
-    container.classList.add('summary-mode');
+ container.classList.add('summary-mode');
 
-    // 2. '선호'/'가능' 날짜 데이터 수집
-    const preferredDates = [];
-    const availableDates = [];
+    // ✅ 월별, 상태별로 날짜를 나누어 저장할 배열 생성
+    const prefCur = [], availCur = [], prefNext = [], availNext = [];
+    const isNextMonthVisible = nc.style.display === 'block';
 
-    document.querySelectorAll('.date:not(.past)').forEach(cell => {
-      const day = String(+cell.dataset.date.slice(8)); // 날짜만 추출 (예: '5')
-      if (cell.classList.contains('all-preferred')) {
-        preferredDates.push(day);
-      } else if (cell.classList.contains('all-available')) {
-        availableDates.push(day);
-      }
+    // 현재 달력에서 날짜 수집
+    calThis.querySelectorAll('.date:not(.past)').forEach(cell => {
+      const day = String(+cell.dataset.date.slice(8));
+      if (cell.classList.contains('all-preferred')) prefCur.push(day);
+      else if (cell.classList.contains('all-available')) availCur.push(day);
     });
 
-    // 3. 결과 테이블에 '중간 집계' 행 추가
-    const summaryRow = resultTableBody.insertRow(0); // 테이블 맨 위에 행 추가
-    summaryRow.id = 'summaryRow'; // 나중에 삭제하기 쉽도록 ID 부여
-    summaryRow.className = 'summary-row'; // CSS 스타일 적용
+    // ✅ 다음달 달력이 보일 때만 다음달 날짜 수집
+    if (isNextMonthVisible) {
+      calNext.querySelectorAll('.date:not(.past)').forEach(cell => {
+        const day = String(+cell.dataset.date.slice(8));
+        if (cell.classList.contains('all-preferred')) prefNext.push(day);
+        else if (cell.classList.contains('all-available')) availNext.push(day);
+      });
+    }
+
+    // ✅ 'fmt' 함수를 사용해 월별로 결과 포맷팅 (기존 사용자 테이블 로직 재활용)
+    const curM = current.getMonth() + 1;
+    const nxtM = (current.getMonth() + 2 > 12) ? 1 : current.getMonth() + 2;
+    const fmt = (mon, arr) => arr && arr.length ? `<strong>${mon}월</strong>: ${arr.sort((a, b) => a - b).join(", ")}` : "";
+    
+    const wantParts = [fmt(curM, prefCur), fmt(nxtM, prefNext)].filter(Boolean);
+    const canParts = [fmt(curM, availCur), fmt(nxtM, availNext)].filter(Boolean);
+    
+    const summaryRow = resultTableBody.insertRow(0);
+    summaryRow.id = 'summaryRow';
+    summaryRow.className = 'summary-row';
     
     summaryRow.innerHTML = `
       <td><strong>📊 중간집계</strong></td>
-      <td>${preferredDates.join(', ') || '-'}</td>
-      <td>${availableDates.join(', ') || '-'}</td>
+      <td>${wantParts.join("<br>") || '-'}</td>
+      <td>${canParts.join("<br>") || '-'}</td>
     `;
   });
 
@@ -346,4 +400,148 @@ document.addEventListener("DOMContentLoaded", () => {
       summaryRow.remove();
     }
   });
+// ✅ '주말 불가' 버튼 기능 로직 (새로 추가)
+   function applyWeekendBlocks() {
+    const blockSat = satBtn.classList.contains('active');
+    const blockSun = sunBtn.classList.contains('active');
+    const isNextMonthVisible = nc.style.display === 'block';
+
+    document.querySelectorAll('.date:not(.past)').forEach(cell => {
+      const dayOfWeek = new Date(cell.dataset.date).getDay();
+      const isNextMonthCell = cell.closest("#calendarNext");
+
+      // 보이지 않는 다음달 셀은 건드리지 않도록 수정
+      const shouldSkip = isNextMonthCell && !isNextMonthVisible;
+
+      // 토요일 처리
+      if (dayOfWeek === 6 && !shouldSkip) { 
+        if(blockSat) cell.classList.add('user-unavailable');
+        else cell.classList.remove('user-unavailable');
+      }
+      // 일요일 처리
+      if (dayOfWeek === 0 && !shouldSkip) {
+        if(blockSun) cell.classList.add('user-unavailable');
+        else cell.classList.remove('user-unavailable');
+      }
+    });
+  }
+
+    satBtn.addEventListener('click', function() {
+      this.classList.toggle('active');
+      applyWeekendBlocks();
+    });
+
+    sunBtn.addEventListener('click', function() {
+      this.classList.toggle('active');
+      applyWeekendBlocks();
+    });
+
+    noBtn.addEventListener('click', function() {
+      this.classList.toggle('active');
+      // '상관없음'을 누르면 주말 불가 버튼은 비활성화
+      if (this.classList.contains('active')) {
+        satBtn.classList.remove('active');
+        sunBtn.classList.remove('active');
+      }
+      applyWeekendBlocks(); // 달력 상태 업데이트
+    });
+ // ✅ --- 최종 결정하기 로직 ---
+    const finalDecisionBox = document.getElementById('finalDecisionBox');
+    const finalDateInput = document.getElementById('finalDateInput');
+    const finalizeBtn = document.getElementById('finalizeBtn');
+    const cancelFinalizeBtn = document.getElementById('cancelFinalizeBtn');
+
+    // 달력의 날짜를 클릭했을 때의 이벤트 리스너 수정
+    function onDateClick(cell) {
+        // 중간 집계 모드에서만 최종 결정 가능
+        if (container.classList.contains('summary-mode')) {
+            if (cell.classList.contains('all-available') || cell.classList.contains('all-preferred')) {
+                finalDateInput.value = cell.dataset.date;
+                finalDecisionBox.style.display = 'block';
+            }
+        } else { // 일반 모드에서는 기존 투표 로직 실행
+            cell.classList.remove("all-available", "all-preferred", "unavailable");
+            if (cell.classList.contains("preferred")) {
+                cell.classList.replace("preferred", "user-unavailable");
+            } else if (cell.classList.contains("user-unavailable")) {
+                cell.classList.remove("user-unavailable");
+            } else {
+                cell.classList.add("preferred");
+            }
+        }
+    }
+    
+    // 기존 renderCal 함수 안의 addEventListener 부분을 onDateClick 함수를 사용하도록 수정
+    // renderCal 함수를 찾아서 아래와 같이 수정해주세요.
+    // if (!cell.classList.contains("past")) {
+    //   cell.addEventListener("click", () => onDateClick(cell));
+    // }
+
+    // '네, 확정합니다!' 버튼 클릭 시
+    finalizeBtn.addEventListener('click', () => {
+        const finalDate = finalDateInput.value;
+        if (!finalDate) return;
+
+        db.collection("calendars").doc(pin).set({ finalizedDate: finalDate }, { merge: true })
+            .then(() => {
+                alert(`모임이 ${finalDate}로 최종 확정되었습니다!`);
+                finalDecisionBox.style.display = 'none';
+            })
+            .catch(err => alert("확정 중 오류가 발생했습니다: " + err));
+    });
+
+    // '아니요, 취소합니다.' 버튼 클릭 시
+    cancelFinalizeBtn.addEventListener('click', () => {
+        finalDecisionBox.style.display = 'none';
+        finalDateInput.value = '';
+    });
+    // ✅ --- 최종 결정하기 로직 ---
+
+    // '네, 확정합니다!' 버튼 클릭 시
+    finalizeBtn.addEventListener('click', () => {
+        const finalDate = finalDateInput.value;
+        if (!finalDate) return;
+
+        // DB에 `finalizedDate` 필드를 저장 (또는 업데이트)
+        db.collection("calendars").doc(pin).set({ finalizedDate: finalDate }, { merge: true })
+            .then(() => {
+                alert(`모임이 ${finalDate}로 최종 확정되었습니다!`);
+                finalDecisionBox.style.display = 'none';
+            })
+            .catch(err => alert("확정 중 오류가 발생했습니다: " + err));
+    });
+
+    // '아니요, 취소합니다.' 버튼 클릭 시
+    cancelFinalizeBtn.addEventListener('click', () => {
+        finalDecisionBox.style.display = 'none';
+        finalDateInput.value = '';
+    });
+    
+    // ✅ 모임 확정 상태를 실시간으로 감지하는 리스너 (새로 추가)
+    db.collection("calendars").doc(pin).onSnapshot(doc => {
+    const data = doc.data();
+
+    // 이전에 확정된 날짜가 있다면 스타일 초기화
+    document.querySelectorAll('.date.finalized').forEach(c => c.classList.remove('finalized'));
+
+    if (data && data.finalizedDate) {
+        const finalDate = data.finalizedDate;
+
+        // [수정] UI 잠금 코드를 모두 제거했습니다.
+
+        // 달력의 날짜에 확정 스타일만 적용
+        const finalizedCell = document.querySelector(`[data-date="${finalDate}"]`);
+        if (finalizedCell) {
+            finalizedCell.classList.add('finalized');
+        }
+        
+        // 만약 최종 결정 창이 열려있다면 닫아줍니다.
+        finalDecisionBox.style.display = 'none';
+    }
 });
+  }); 
+    // 실시간 업데이트 로직(onSnapshot)에 확정 날짜 표시 기능 추가
+    // db.collection("calendars").doc(pin).onSnapshot(snapshot => { ... }); 를 찾아서
+    // snapshot.data()?.finalizedDate 부분을 확인하는 코드를 추가합니다.
+
+    

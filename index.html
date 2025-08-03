@@ -38,6 +38,7 @@
       <label><b>모임 이름:</b></label>
       <input type="text" id="meetingName" placeholder="모임 이름을 입력하세요" />
  <button id="copyLinkBtn">링크 복사</button>
+<button id="newCalBtn" style="margin-left: 5px;">새 달력 만들기</button>
     </div>
  
 
@@ -45,6 +46,11 @@
     <div class="user-info">
       <label><b>참석자 이름:</b></label>
       <input type="text" id="userName" placeholder="이름 입력" />
+      <div class="filter-btn-group">
+        <button class="filter-btn" id="noPreference">상관없음</button>
+        <button class="filter-btn" id="blockSat">토요일 불가</button>
+        <button class="filter-btn" id="blockSun">일요일 불가</button>
+      </div>
       <select id="userColor">
         <option value="red">🔴 빨간색</option>
         <option value="blue">🔵 파란색</option>
@@ -52,10 +58,9 @@
         <option value="orange">🟠 주황색</option>
         <option value="purple">🟣 보라색</option>
       </select>
-      <label><input type="checkbox" id="noPreference" /> 상관없음</label>
-<label style="margin-left:10px;"><input type="checkbox" id="blockSat"/> 토요일 불가</label>
-     <label style="margin-left:10px;"><input type="checkbox" id="blockSun"/> 일요일 불가</label>
     </div>
+
+ 
 
     <hr />
 
@@ -102,6 +107,14 @@
     </div>
 
     <!-- 결과 제출 버튼 -->
+      <div id="finalDecisionBox" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; display: none;">
+      <h4>🎉 모임 최종 확정</h4>
+      <p>아래 날짜로 모임을 확정할까요?</p>
+      <input type="text" id="finalDateInput" readonly style="font-weight: bold; border: none; font-size: 1.2em;">
+      <button id="finalizeBtn">네, 확정합니다!</button>
+      <button id="cancelFinalizeBtn">아니요, 취소합니다.</button>
+    </div>
+
     <button id="submitBtn" class="btn-submit">결과 제출하기</button>
 
     <!-- 결과 테이블 -->
