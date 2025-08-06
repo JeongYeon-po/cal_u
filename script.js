@@ -270,7 +270,6 @@ newCalBtn.addEventListener('click', () => {
       .then(() => {
         console.log("✅ Firebase 저장/수정 성공");
         localStorage.setItem('calU_userName', myName);
-          noChk.checked = false; // ✅ 자동으로 상관없음 체크 해제
           noBtn.classList.remove('active'); // ✅ 추가: 상관없음 버튼 비활성화
           satBtn.classList.remove('active'); // ✅ 추가: 토요일 불가 버튼 비활성화
           sunBtn.classList.remove('active'); // ✅ 추가: 일요일 불가 버튼 비활성화
