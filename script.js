@@ -17,7 +17,12 @@ document.addEventListener("DOMContentLoaded", () => {
         .catch(err => alert("복사에 실패했습니다: " + err));
     });
   }
-
+  // ✅ [추가] 바로 이 위치에 아래 코드 블록을 추가하세요!
+  const savedName = localStorage.getItem('calU_userName');
+  const userNameInput = document.getElementById("userName");
+  if (savedName) {
+    userNameInput.value = savedName;
+  }
   // --- DOM 요소 및 기본 변수 선언 ---
   const calThis = document.getElementById("calendar");
   const calNext = document.getElementById("calendarNext");
@@ -264,6 +269,7 @@ newCalBtn.addEventListener('click', () => {
     db.collection("calendars").doc(pin).collection("votes").doc(myName).set(dataToSave)
       .then(() => {
         console.log("✅ Firebase 저장/수정 성공");
+        localStorage.setItem('calU_userName', myName);
           noChk.checked = false; // ✅ 자동으로 상관없음 체크 해제
           noBtn.classList.remove('active'); // ✅ 추가: 상관없음 버튼 비활성화
           satBtn.classList.remove('active'); // ✅ 추가: 토요일 불가 버튼 비활성화
