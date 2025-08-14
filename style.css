@@ -249,6 +249,43 @@ body {
   border-radius: 5px; /* 살짝 둥글게 */
   transition: background-color 0.2s; /* 부드러운 효과 */
 }
+@media (max-width: 600px) {
+
+  /* --- 상단 헤더 영역 --- */
+  .header {
+    flex-wrap: nowrap; /* 줄바꿈 절대 안함 */
+  }
+  .header label {
+    display: none; /* '모임 이름:' 글자 숨기기 */
+  }
+  .header #meetingName {
+    min-width: 50px; /* 최소 너비를 줄여 공간 확보 */
+  }
+
+  /* --- 참석자 정보 영역 --- */
+  .user-info {
+    flex-wrap: nowrap; /* 줄바꿈 절대 안함 */
+  }
+  .user-info label {
+    display: none; /* '참석자 이름:' 글자 숨기기 */
+  }
+  .user-info #userName {
+    flex-basis: 70px; /* 입력창 기본 너비를 고정 */
+    flex-grow: 0;     /* 더 이상 늘어나지 않도록 */
+  }
+  
+  /* 필터 버튼들과 색상 선택의 크기를 줄입니다 */
+  .user-info .filter-btn,
+  .user-info #blockSat,
+  .user-info #blockSun {
+    padding: 6px 8px; /* 버튼 안쪽 여백 줄이기 */
+    font-size: 0.8rem; /* 버튼 글자 크기 줄이기 */
+  }
+  .user-info #userColor {
+      padding: 2px;
+  }
+}
+
 
 .icon-btn:hover {
   background-color: #e9e9e9;
