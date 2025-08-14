@@ -37,9 +37,10 @@
     <div class="header">
       <label><b>모임 이름:</b></label>
       <input type="text" id="meetingName" placeholder="모임 이름을 입력하세요" />
- <button id="copyLinkBtn">링크 복사</button>
-<button id="newCalBtn" style="margin-left: 5px;">새 달력 만들기</button>
-    </div>
+     <button id="copyLinkBtn" class="icon-btn" title="링크 복사">🔗</button>
+     <button id="newCalBtn" class="icon-btn" title="새 달력 만들기">➕</button>
+     <button id="helpBtn" class="icon-btn" title="도움말">❓</button>
+     </div>
  
 
     <!-- 사용자 정보: 이름·색상·상관없음 -->
@@ -48,8 +49,8 @@
       <input type="text" id="userName" placeholder="이름 입력" />
       <div class="filter-btn-group">
         <button class="filter-btn" id="noPreference">상관없음</button>
-        <button class="filter-btn" id="blockSat">토요일 불가</button>
-        <button class="filter-btn" id="blockSun">일요일 불가</button>
+        <button class="filter-btn" id="blockSat">토 X</button>
+        <button class="filter-btn" id="blockSun">일 X</button>
       </div>
       <select id="userColor">
         <option value="red">🔴 빨간색</option>

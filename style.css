@@ -10,9 +10,18 @@ body {
 }
 .header, .user-info {
   display: flex;
+  flex-wrap: wrap; /* [중요] 공간이 없으면 줄바꿈 */
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+  border-bottom: 1px solid #eee; /* 구분선 추가 */
+  padding: 10px;
+}
+/* 헤더와 사용자 정보 영역의 입력창 스타일 */
+.header input[type="text"],
+.user-info input[type="text"] {
+  flex-grow: 1; /* 남는 공간을 최대한 차지 */
+  min-width: 120px; /* 너무 작아지지 않게 최소 너비 설정 */
 }
 .user-info input#meetingName { width: 200px; }
 .user-info input#userName   { width: 140px; }
@@ -220,4 +229,27 @@ body {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
+}
+/* 아이콘 버튼 공통 스타일 */
+.icon-btn {
+  width: 38px;      /* 버튼의 가로 크기 */
+  height: 38px;     /* 버튼의 세로 크기 */
+  font-size: 1.2rem;/* 아이콘(글자) 크기 */
+
+  /* 아이콘을 버튼 정중앙에 배치하기 위한 Flexbox 설정 */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+
+  /* 기타 스타일 */
+  padding: 0;
+  border: 1px solid #ccc;
+  background-color: #f8f9fa;
+  cursor: pointer;
+  border-radius: 5px; /* 살짝 둥글게 */
+  transition: background-color 0.2s; /* 부드러운 효과 */
+}
+
+.icon-btn:hover {
+  background-color: #e9e9e9;
 }
