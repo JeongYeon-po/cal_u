@@ -249,6 +249,10 @@ body {
   border-radius: 5px; /* 살짝 둥글게 */
   transition: background-color 0.2s; /* 부드러운 효과 */
 }
+
+.icon-btn:hover {
+  background-color: #e9e9e9;
+}
 @media (max-width: 600px) {
 
   /* --- 상단 헤더 영역 --- */
@@ -285,8 +289,47 @@ body {
       padding: 2px;
   }
 }
+/* =================================== */
+/* 도움말 모달(팝업) 스타일 (추가)     */
+/* =================================== */
 
+/* 모달 배경 (반투명 검은색 오버레이) */
+.modal {
+  display: none; /* 평소에는 숨겨둡니다 */
+  position: fixed; /* 화면 전체에 고정 */
+  z-index: 1000; /* 다른 요소들보다 항상 위에 있도록 */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* 반투명 검은색 */
+}
 
-.icon-btn:hover {
-  background-color: #e9e9e9;
+/* 모달 내용이 들어가는 흰색 박스 */
+.modal-content {
+  background-color: #fefefe;
+  margin: 15vh auto; /* 화면 세로 중앙쯤에 위치 */
+  padding: 25px 30px;
+  border: 1px solid #888;
+  width: 90%;
+  max-width: 600px; /* PC에서는 너무 커지지 않도록 */
+  border-radius: 8px;
+  position: relative;
+}
+
+/* 닫기 버튼 (X 모양) */
+.close-btn {
+  color: #aaa;
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close-btn:hover,
+.close-btn:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
 }
