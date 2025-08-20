@@ -461,6 +461,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ===============================================
+  // 5. 네이버 지도 초기화
+  // ===============================================
+  const mapOptions = {
+      center: new naver.maps.LatLng(35.8714, 128.6014), // 지도의 초기 중심 좌표 (대구 중심)
+      zoom: 15 // 지도의 초기 줌 레벨
+  };
+
+  const map = new naver.maps.Map('map', mapOptions);
+
   // --- 초기 렌더링 ---
   renderAll();
 
