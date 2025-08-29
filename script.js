@@ -44,10 +44,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const finalDateInput = document.getElementById('finalDateInput');
   const finalizeBtn = document.getElementById('finalizeBtn');
   const cancelFinalizeBtn = document.getElementById('cancelFinalizeBtn');
-  const mapOptions = {
-      center: new naver.maps.LatLng(35.8714, 128.6014), // 지도의 초기 중심 좌표 (대구 중심)
-      zoom: 15 // 지도의 초기 줌 레벨
-  };
+  
+  // --- 지도 및 검색 관련 요소 ---
+  const locationSection = document.getElementById('locationSection');
+  const searchInput = document.getElementById('searchInput');
+  const searchBtn = document.getElementById('searchBtn');
+
   // --- 기본 변수 선언 ---
   const today = new Date(); 
   today.setHours(0, 0, 0, 0);
@@ -464,9 +466,43 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // --- 네이버 지도 초기화 및 검색 기능 ---
+  const map = new naver.maps.Map('map', {
+    center: new naver.maps.LatLng(35.8714, 128.6014), // 지도의 초기 중심 좌표 (대구 중심)
+    zoom: 15 // 지도의 초기 줌 레벨
+  });
 
+  let currentMarker = null; // 현재 지도에 표시된 마커를 저장할 변수
 
-  const map = new naver.maps.Map('map', mapOptions);
+  if (searchBtn) {
+    searchBtn.addEventListener('click', function () {
+      const query = searchInput.value;
+      if (!query) {
+        alert('검색어를 입력해주세요.');
+        return;
+      }
+
+      naver.maps.Service.geocode({ query: query }, function (status, response) {
+        if (status !== naver.maps.Service.Status.OK) {
+          return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
+        }
+        const result = response.v2;
+        const items = result.addresses;
+        if (items.length === 0) {
+          return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
+        }
+        const point = new naver.maps.LatLng(items[0].y, items[0].x);
+        if (currentMarker) {
+          currentMarker.setMap(null);
+        }
+        map.panTo(point);
+        currentMarker = new naver.maps.Marker({
+          position: point,
+          map: map
+        });
+      });
+    });
+  }
 
   // --- 초기 렌더링 ---
   renderAll();
@@ -557,22 +593,23 @@ document.addEventListener("DOMContentLoaded", () => {
   db.collection("calendars").doc(pin).onSnapshot(doc => {
     const data = doc.data();
 
-    // 이전에 확정된 날짜가 있다면 스타일 초기화
     document.querySelectorAll('.date.finalized').forEach(c => c.classList.remove('finalized'));
 
     if (data && data.finalizedDate) {
-      const finalDate = data.finalizedDate;
+      // 최종 날짜가 있으면 지도를 보여줌
+      locationSection.style.display = 'block';
 
-      // 달력의 날짜에 확정 스타일만 적용
+      const finalDate = data.finalizedDate;
       const finalizedCell = document.querySelector(`[data-date="${finalDate}"]`);
       if (finalizedCell) {
         finalizedCell.classList.add('finalized');
       }
-      
-      // 만약 최종 결정 창이 열려있다면 닫아줍니다.
       if (finalDecisionBox) {
         finalDecisionBox.style.display = 'none';
       }
+    } else {
+      // 최종 날짜가 없으면 (혹은 취소되면) 지도를 다시 숨김
+      locationSection.style.display = 'none';
     }
   });
 });
