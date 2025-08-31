@@ -104,9 +104,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cell.classList.contains('finalized')) {
       if (confirm(`"${cell.dataset.date}" 날짜 확정을 취소하시겠습니까?`)) {
         // DB에서 finalizedDate 필드를 삭제하여 '미확정' 상태로 되돌립니다.
-        db.collection("calendars").doc(pin).update({
-          finalizedDate: firebase.firestore.FieldValue.delete()
-        }).catch(err => alert("취소 중 오류 발생: " + err));
+        if (window.db) {
+          db.collection("calendars").doc(pin).update({
+            finalizedDate: firebase.firestore.FieldValue.delete()
+          }).catch(err => alert("취소 중 오류 발생: " + err));
+        }
       }
       return; // 확정 취소 로직 후 함수 종료
     }
@@ -188,6 +190,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const isNextMonthVisible = nc.style.display === 'block';
 
     document.querySelectorAll('.date:not(.past)').forEach(cell => {
+      if (!cell.dataset.date) return; // dataset.date가 없으면 스킵
+      
       const dayOfWeek = new Date(cell.dataset.date).getDay();
       const isNextMonthCell = cell.closest("#calendarNext");
       const shouldSkip = isNextMonthCell && !isNextMonthVisible;
@@ -222,6 +226,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const myName = userNameInput.value.trim();
     if (!myName) {
       alert("이름을 먼저 입력해주세요.");
+      return;
+    }
+
+    if (!window.db) {
+      alert("데이터베이스 연결이 준비되지 않았습니다.");
       return;
     }
 
@@ -263,6 +272,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         alert("기존 제출 내역이 없습니다. 먼저 제출해주세요.");
       }
+    }).catch(err => {
+      console.error("투표 내역 로딩 실패:", err);
+      alert("데이터를 불러오는 중 오류가 발생했습니다.");
     });
   }
 
@@ -288,6 +300,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (!confirm(`"${myName}"님의 제출 정보를 모두 삭제할까요?`)) return;
+
+      if (!window.db) {
+        alert("데이터베이스 연결이 준비되지 않았습니다.");
+        return;
+      }
 
       db.collection("calendars").doc(pin).collection("votes").doc(myName)
         .delete()
@@ -329,17 +346,26 @@ document.addEventListener("DOMContentLoaded", () => {
         loadMyVote();
         return;
       }
+
+      if (!window.db) {
+        alert("데이터베이스 연결이 준비되지 않았습니다.");
+        return;
+      }
       
       const wantCur = [], canCur = [], wantNext = [], canNext = [];
       document.querySelectorAll("#calendar .date:not(.past)").forEach(c => {
-        const day = String(+c.dataset.date.slice(8));
-        if (c.classList.contains("preferred")) wantCur.push(day);
-        else if (!c.classList.contains("user-unavailable")) canCur.push(day);
+        if (c.dataset.date) {
+          const day = String(+c.dataset.date.slice(8));
+          if (c.classList.contains("preferred")) wantCur.push(day);
+          else if (!c.classList.contains("user-unavailable")) canCur.push(day);
+        }
       });
       document.querySelectorAll("#calendarNext .date:not(.past)").forEach(c => {
-        const day = String(+c.dataset.date.slice(8));
-        if (c.classList.contains("preferred")) wantNext.push(day);
-        else if (!c.classList.contains("user-unavailable")) canNext.push(day);
+        if (c.dataset.date) {
+          const day = String(+c.dataset.date.slice(8));
+          if (c.classList.contains("preferred")) wantNext.push(day);
+          else if (!c.classList.contains("user-unavailable")) canNext.push(day);
+        }
       });
 
       const dataToSave = {
@@ -359,6 +385,10 @@ document.addEventListener("DOMContentLoaded", () => {
           noBtn.classList.remove('active');
           satBtn.classList.remove('active');
           sunBtn.classList.remove('active');
+        })
+        .catch(err => {
+          console.error("제출 실패:", err);
+          alert("제출 중 오류가 발생했습니다.");
         });
     };
   }
@@ -400,17 +430,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // 현재 달력에서 날짜 수집
       calThis.querySelectorAll('.date:not(.past)').forEach(cell => {
-        const day = String(+cell.dataset.date.slice(8));
-        if (cell.classList.contains('all-preferred')) prefCur.push(day);
-        else if (cell.classList.contains('all-available')) availCur.push(day);
+        if (cell.dataset.date) {
+          const day = String(+cell.dataset.date.slice(8));
+          if (cell.classList.contains('all-preferred')) prefCur.push(day);
+          else if (cell.classList.contains('all-available')) availCur.push(day);
+        }
       });
 
       // 다음달 달력이 보일 때만 다음달 날짜 수집
       if (isNextMonthVisible) {
         calNext.querySelectorAll('.date:not(.past)').forEach(cell => {
-          const day = String(+cell.dataset.date.slice(8));
-          if (cell.classList.contains('all-preferred')) prefNext.push(day);
-          else if (cell.classList.contains('all-available')) availNext.push(day);
+          if (cell.dataset.date) {
+            const day = String(+cell.dataset.date.slice(8));
+            if (cell.classList.contains('all-preferred')) prefNext.push(day);
+            else if (cell.classList.contains('all-available')) availNext.push(day);
+          }
         });
       }
 
@@ -450,6 +484,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const finalDate = finalDateInput.value;
       if (!finalDate) return;
 
+      if (!window.db) {
+        alert("데이터베이스 연결이 준비되지 않았습니다.");
+        return;
+      }
+
       db.collection("calendars").doc(pin).set({ finalizedDate: finalDate }, { merge: true })
         .then(() => {
           alert(`모임이 ${finalDate}로 최종 확정되었습니다!`);
@@ -467,154 +506,190 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // --- 네이버 지도 초기화 및 검색 기능 ---
-  const map = new naver.maps.Map('map', {
   function initMap() {
-    const map = new naver.maps.Map('map', {
+    // 네이버 맵 API가 로드되었는지 확인
+    if (typeof naver === 'undefined' || !naver.maps) {
+      console.warn("네이버 지도 API가 로드되지 않았습니다.");
+      return;
+    }
+
+    try {
+      const map = new naver.maps.Map('map', {
         center: new naver.maps.LatLng(35.8714, 128.6014),
         zoom: 15
-    });
+      });
 
-    let currentMarker = null;
+      let currentMarker = null;
 
-    if (searchBtn) {
-      searchBtn.addEventListener('click', function () {
-        const query = searchInput.value;
-        if (!query) {
-          alert('검색어를 입력해주세요.');
-          return;
-        }
+      if (searchBtn && searchInput) {
+        searchBtn.addEventListener('click', function () {
+          const query = searchInput.value.trim();
+          if (!query) {
+            alert('검색어를 입력해주세요.');
+            return;
+          }
 
-        naver.maps.Service.geocode({ query: query }, function (status, response) {
-          if (status !== naver.maps.Service.Status.OK) {
-            return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
+          if (!naver.maps.Service) {
+            alert('지도 검색 서비스를 사용할 수 없습니다.');
+            return;
           }
-          const result = response.v2;
-          const items = result.addresses;
-          if (items.length === 0) {
-            return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
-          }
-          const point = new naver.maps.LatLng(items[0].y, items[0].x);
-          if (currentMarker) {
-            currentMarker.setMap(null);
-          }
-          map.panTo(point);
-          currentMarker = new naver.maps.Marker({
-            position: point,
-            map: map
+
+          naver.maps.Service.geocode({ query: query }, function (status, response) {
+            if (status !== naver.maps.Service.Status.OK) {
+              return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
+            }
+            const result = response.v2;
+            const items = result.addresses;
+            if (items.length === 0) {
+              return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
+            }
+            const point = new naver.maps.LatLng(items[0].y, items[0].x);
+            if (currentMarker) {
+              currentMarker.setMap(null);
+            }
+            map.panTo(point);
+            currentMarker = new naver.maps.Marker({
+              position: point,
+              map: map
+            });
           });
         });
-      });
+      }
+    } catch (error) {
+      console.error("지도 초기화 실패:", error);
     }
   }
 
-  naver.maps.onJSContentLoaded = initMap;
+  // 네이버 지도 API 로드 확인 및 초기화
+  if (typeof naver !== 'undefined' && naver.maps) {
+    // 이미 로드되어 있으면 바로 초기화
+    initMap();
+  } else {
+    // 로드되지 않았으면 로드 완료 후 초기화
+    if (typeof naver !== 'undefined' && naver.maps && naver.maps.onJSContentLoaded) {
+      naver.maps.onJSContentLoaded = initMap;
+    } else {
+      console.warn("네이버 지도 API를 사용할 수 없습니다.");
+    }
+  }
 
   // --- 초기 렌더링 ---
   renderAll();
 
   // --- 실시간 업데이트 및 교집합 계산 로직 ---
-  db.collection("calendars").doc(pin).collection("votes").onSnapshot(snapshot => {
-    const tblBody = tbl.tBodies[0];
-    if (!tblBody) tbl.createTBody();
-    tbl.tBodies[0].innerHTML = "";
+  // Firebase 연결 확인 후 리스너 등록
+  if (window.db) {
+    db.collection("calendars").doc(pin).collection("votes").onSnapshot(snapshot => {
+      const tblBody = tbl.tBodies[0];
+      if (!tblBody) tbl.createTBody();
+      tbl.tBodies[0].innerHTML = "";
 
-    const allDates = {};
-    const totalVotes = snapshot.size;
-    const myName = userNameInput.value.trim();
-    let hasSubmitted = false;
-    
-    snapshot.forEach(doc => {
-      if (doc.id === myName) hasSubmitted = true;
-      const data = doc.data();
+      const allDates = {};
+      const totalVotes = snapshot.size;
+      const myName = userNameInput.value.trim();
+      let hasSubmitted = false;
       
-      // 테이블 채우기 로직
-      const row = tbl.tBodies[0].insertRow();
-      row.dataset.user = data.name;
-      const c1 = row.insertCell(), c2 = row.insertCell(), c3 = row.insertCell();
-      c1.textContent = data.name; 
-      c1.style.color = data.color || "black"; 
-      c1.style.fontWeight = "bold";
-      
-      const curM = current.getMonth() + 1;
-      const nxtM = current.getMonth() + 2 > 12 ? 1 : current.getMonth() + 2;
-      const fmt = (mon, arr) => arr && arr.length ? `<strong>${mon}월</strong>: ${arr.join(", ")}` : "";
-      const isNextMonthVisible = nc.style.display === 'block';
-      
-      const wantParts = data.noPreference ? ["모든 날짜 가능"] : [fmt(curM, data.wantCur), isNextMonthVisible ? fmt(nxtM, data.wantNext) : ''].filter(Boolean);
-      const canParts = data.noPreference ? ["-"] : [fmt(curM, data.canCur), isNextMonthVisible ? fmt(nxtM, data.canNext) : ''].filter(Boolean);
-      
-      c2.innerHTML = wantParts.join("<br>");
-      c3.innerHTML = canParts.join("<br>");
-
-      // 교집합 계산 로직
-      const wantCurSet = new Set(data.wantCur || []); 
-      const canCurSet = new Set(data.canCur || []);
-      const wantNextSet = new Set(data.wantNext || []); 
-      const canNextSet = new Set(data.canNext || []);
-      const allPossibleDays = Array.from({ length: 31 }, (_, i) => String(i + 1));
-      
-      allPossibleDays.forEach(day => {
-        const curKey = `cur-${day}`; 
-        if (!allDates[curKey]) allDates[curKey] = { want: 0, can: 0, unavailable: 0 };
-        if (data.noPreference || wantCurSet.has(day)) allDates[curKey].want++;
-        else if (canCurSet.has(day)) allDates[curKey].can++;
-        else allDates[curKey].unavailable++;
+      snapshot.forEach(doc => {
+        if (doc.id === myName) hasSubmitted = true;
+        const data = doc.data();
         
-        const nextKey = `next-${day}`; 
-        if (!allDates[nextKey]) allDates[nextKey] = { want: 0, can: 0, unavailable: 0 };
-        if (data.noPreference || wantNextSet.has(day)) allDates[nextKey].want++;
-        else if (canNextSet.has(day)) allDates[nextKey].can++;
-        else allDates[nextKey].unavailable++;
+        // 테이블 채우기 로직
+        const row = tbl.tBodies[0].insertRow();
+        row.dataset.user = data.name;
+        const c1 = row.insertCell(), c2 = row.insertCell(), c3 = row.insertCell();
+        c1.textContent = data.name; 
+        c1.style.color = data.color || "black"; 
+        c1.style.fontWeight = "bold";
+        
+        const curM = current.getMonth() + 1;
+        const nxtM = current.getMonth() + 2 > 12 ? 1 : current.getMonth() + 2;
+        const fmt = (mon, arr) => arr && arr.length ? `<strong>${mon}월</strong>: ${arr.join(", ")}` : "";
+        const isNextMonthVisible = nc.style.display === 'block';
+        
+        const wantParts = data.noPreference ? ["모든 날짜 가능"] : [fmt(curM, data.wantCur), isNextMonthVisible ? fmt(nxtM, data.wantNext) : ''].filter(Boolean);
+        const canParts = data.noPreference ? ["-"] : [fmt(curM, data.canCur), isNextMonthVisible ? fmt(nxtM, data.canNext) : ''].filter(Boolean);
+        
+        c2.innerHTML = wantParts.join("<br>");
+        c3.innerHTML = canParts.join("<br>");
+
+        // 교집합 계산 로직
+        const wantCurSet = new Set(data.wantCur || []); 
+        const canCurSet = new Set(data.canCur || []);
+        const wantNextSet = new Set(data.wantNext || []); 
+        const canNextSet = new Set(data.canNext || []);
+        const allPossibleDays = Array.from({ length: 31 }, (_, i) => String(i + 1));
+        
+        allPossibleDays.forEach(day => {
+          const curKey = `cur-${day}`; 
+          if (!allDates[curKey]) allDates[curKey] = { want: 0, can: 0, unavailable: 0 };
+          if (data.noPreference || wantCurSet.has(day)) allDates[curKey].want++;
+          else if (canCurSet.has(day)) allDates[curKey].can++;
+          else allDates[curKey].unavailable++;
+          
+          const nextKey = `next-${day}`; 
+          if (!allDates[nextKey]) allDates[nextKey] = { want: 0, can: 0, unavailable: 0 };
+          if (data.noPreference || wantNextSet.has(day)) allDates[nextKey].want++;
+          else if (canNextSet.has(day)) allDates[nextKey].can++;
+          else allDates[nextKey].unavailable++;
+        });
       });
+      
+      if (!isEditing) {
+        submitBtn.textContent = hasSubmitted ? '수정하기' : '결과 제출하기';
+      }
+
+      // 초기 로딩 시 빈 달력 표시: 내가 제출했고, 수정 중이 아닐 때만 교집합 표시
+      if (hasSubmitted && !isEditing) {
+        document.querySelectorAll(".date:not(.past)").forEach(cell => {
+          if (!cell.dataset.date) return;
+          
+          cell.classList.remove("all-available", "all-preferred", "unavailable", "preferred", "user-unavailable");
+          const day = cell.textContent;
+          const isNextMonth = cell.closest("#calendarNext");
+          const key = isNextMonth ? `next-${day}` : `cur-${day}`;
+          const stats = allDates[key];
+          if (stats && totalVotes > 0) {
+            if (stats.unavailable > 0) cell.classList.add("unavailable");
+            else if (stats.want === totalVotes) cell.classList.add("all-preferred");
+            else if (stats.want + stats.can === totalVotes) cell.classList.add("all-available");
+          }
+        });
+      } else if (!hasSubmitted) { 
+        // 아직 제출 안했으면 달력 깨끗하게 비우기
+        document.querySelectorAll(".date:not(.past)").forEach(cell => {
+          cell.classList.remove("all-available", "all-preferred", "unavailable", "preferred", "user-unavailable");
+        });
+      }
+    }, error => {
+      console.error("실시간 업데이트 에러:", error);
     });
-    
-    if (!isEditing) {
-      submitBtn.textContent = hasSubmitted ? '수정하기' : '결과 제출하기';
-    }
 
-    // 초기 로딩 시 빈 달력 표시: 내가 제출했고, 수정 중이 아닐 때만 교집합 표시
-    if (hasSubmitted && !isEditing) {
-      document.querySelectorAll(".date:not(.past)").forEach(cell => {
-        cell.classList.remove("all-available", "all-preferred", "unavailable", "preferred", "user-unavailable");
-        const day = cell.textContent;
-        const isNextMonth = cell.closest("#calendarNext");
-        const key = isNextMonth ? `next-${day}` : `cur-${day}`;
-        const stats = allDates[key];
-        if (stats && totalVotes > 0) {
-          if (stats.unavailable > 0) cell.classList.add("unavailable");
-          else if (stats.want === totalVotes) cell.classList.add("all-preferred");
-          else if (stats.want + stats.can === totalVotes) cell.classList.add("all-available");
+    // --- 모임 확정 상태를 실시간으로 감지하는 리스너 ---
+    db.collection("calendars").doc(pin).onSnapshot(doc => {
+      const data = doc.data();
+
+      document.querySelectorAll('.date.finalized').forEach(c => c.classList.remove('finalized'));
+
+      if (data && data.finalizedDate) {
+        // 최종 날짜가 있으면 지도를 보여줌
+        if (locationSection) locationSection.style.display = 'block';
+
+        const finalDate = data.finalizedDate;
+        const finalizedCell = document.querySelector(`[data-date="${finalDate}"]`);
+        if (finalizedCell) {
+          finalizedCell.classList.add('finalized');
         }
-      });
-    } else if (!hasSubmitted) { 
-      // 아직 제출 안했으면 달력 깨끗하게 비우기
-      document.querySelectorAll(".date:not(.past)").forEach(cell => {
-        cell.classList.remove("all-available", "all-preferred", "unavailable", "preferred", "user-unavailable");
-      });
-    }
-  });
-
-  // --- 모임 확정 상태를 실시간으로 감지하는 리스너 ---
-  db.collection("calendars").doc(pin).onSnapshot(doc => {
-    const data = doc.data();
-
-    document.querySelectorAll('.date.finalized').forEach(c => c.classList.remove('finalized'));
-
-    if (data && data.finalizedDate) {
-      // 최종 날짜가 있으면 지도를 보여줌
-      locationSection.style.display = 'block';
-
-      const finalDate = data.finalizedDate;
-      const finalizedCell = document.querySelector(`[data-date="${finalDate}"]`);
-      if (finalizedCell) {
-        finalizedCell.classList.add('finalized');
+        if (finalDecisionBox) {
+          finalDecisionBox.style.display = 'none';
+        }
+      } else {
+        // 최종 날짜가 없으면 (혹은 취소되면) 지도를 다시 숨김
+        if (locationSection) locationSection.style.display = 'none';
       }
-      if (finalDecisionBox) {
-        finalDecisionBox.style.display = 'none';
-      }
-    } else {
-      // 최종 날짜가 없으면 (혹은 취소되면) 지도를 다시 숨김
-      locationSection.style.display = 'none';
-    }
-  });
+    }, error => {
+      console.error("모임 상태 업데이트 에러:", error);
+    });
+  } else {
+    console.warn("Firebase가 초기화되지 않았습니다.");
+  }
 });

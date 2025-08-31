@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cal-U | 모임 일정 조율</title>
+  <!-- 파비콘 추가 (404 에러 방지) -->
+  <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAABILAAASCwAAAAAAAAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==">
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- 네이버 지도 API (안전한 로딩) -->
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=qzou8cg339&submodules=geocode" 
+          onerror="console.warn('네이버 지도 API 로딩 실패')"></script>
+  
+  <!-- Firebase v8 SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <script>
+    // Firebase 초기화를 안전하게 처리
+    try {
+      const firebaseConfig = {
+        apiKey: "AIzaSyCaRdS6DWMNd8LyGvWnO61MsOp49QuUFKU",
+        authDomain: "cal-u-c17a9.firebaseapp.com",
+        projectId: "cal-u-c17a9",
+        storageBucket: "cal-u-c17a9.firebasestorage.app",
+        messagingSenderId: "237824369858",
+        appId: "1:237824369858:web:86d924f7dcac9a4163075b",
+        measurementId: "G-825J221WP5"
+      };
+
+      if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        window.db = firebase.firestore();
+        console.log("Firebase 초기화 성공");
+      } else {
+        console.error("Firebase SDK가 로드되지 않았습니다.");
+      }
+    } catch (error) {
+      console.error("Firebase 초기화 실패:", error);
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <!-- 뒤로가기 버튼 (중간집계 모드용) -->
+    <button id="backBtn" style="display:none; width: 100%; padding: 10px; margin-bottom: 15px; background: #f0f0f0; border: 1px solid #ccc; font-weight: bold; cursor: pointer;">
+      📅 원래대로 돌아가기
+    </button>
+
+    <!-- 헤더: 모임 이름 -->
+    <div class="header">
+      <label><b>모임 이름:</b></label>
+      <input type="text" id="meetingName" placeholder="모임 이름을 입력하세요" />
+      <button id="copyLinkBtn" class="icon-btn" title="링크 복사">🔗</button>
+      <button id="newCalBtn" class="icon-btn" title="새 달력 만들기">➕</button>
+      <button id="helpBtn" class="icon-btn" title="도움말">❓</button>
+    </div>
+
+    <!-- 사용자 정보: 이름·색상·상관없음 -->
+    <div class="user-info">
+      <label><b>참석자 이름:</b></label>
+      <input type="text" id="userName" placeholder="이름 입력" />
+      <div class="filter-btn-group">
+        <button class="filter-btn" id="noPreference">상관없음</button>
+        <button class="filter-btn" id="blockSat">토 X</button>
+        <button class="filter-btn" id="blockSun">일 X</button>
+      </div>
+      <select id="userColor">
+        <option value="red">🔴 빨간색</option>
+        <option value="blue">🔵 파란색</option>
+        <option value="green">🟢 초록색</option>
+        <option value="orange">🟠 주황색</option>
+        <option value="purple">🟣 보라색</option>
+      </select>
+    </div>
+
+    <hr />
+
+    <!-- 달력 네비게이션: 이전·월표시·다음 + 리셋 -->
+    <div class="month-nav">
+      <button id="prevMonth">◀</button>
+      <span id="yearMonth"></span>
+      <button id="nextMonth">▶</button>
+      <button id="resetBtn" class="btn-reset">리셋</button>
+    </div>
+
+    <!-- 요일 헤더 -->
+    <div class="calendar-days">
+      <div class="day red">일</div>
+      <div class="day">월</div>
+      <div class="day">화</div>
+      <div class="day">수</div>
+      <div class="day">목</div>
+      <div class="day">금</div>
+      <div class="day blue">토</div>
+    </div>
+
+    <!-- 이번달 달력 그리드 -->
+    <div id="calendar" class="calendar-grid"></div>
+
+    <!-- 다음달 보기 토글 -->
+    <button id="toggleNextMonthBtn" class="btn-toggle">다음달 보기</button>
+
+    <!-- 다음달 달력 (초기 숨김) -->
+    <div id="nextMonthContainer" style="display:none;">
+      <div class="month-nav">
+        <span id="yearMonthNext"></span>
+      </div>
+      <div class="calendar-days">
+        <div class="day red">일</div>
+        <div class="day">월</div>
+        <div class="day">화</div>
+        <div class="day">수</div>
+        <div class="day">목</div>
+        <div class="day">금</div>
+        <div class="day blue">토</div>
+      </div>
+      <div id="calendarNext" class="calendar-grid"></div>
+    </div>
+
+    <!-- 최종 결정 확인 박스 -->
+    <div id="finalDecisionBox" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; display: none;">
+      <h4>🎉 모임 최종 확정</h4>
+      <p>아래 날짜로 모임을 확정할까요?</p>
+      <input type="text" id="finalDateInput" readonly style="font-weight: bold; border: none; font-size: 1.2em;">
+      <button id="finalizeBtn">네, 확정합니다!</button>
+      <button id="cancelFinalizeBtn">아니요, 취소합니다.</button>
+    </div>
+
+    <!-- 결과 제출 버튼 -->
+    <button id="submitBtn" class="btn-submit">결과 제출하기</button>
+
+    <!-- 결과 테이블 -->
+    <div class="result">
+      <h3>📅 유저별 선택 현황</h3>
+      <button id="summaryBtn" style="margin-bottom: 10px; padding: 5px 8px; cursor: pointer;">
+        📊 중간 집계 보기
+      </button>
+      <div class="table-wrapper">
+        <table id="resultTable">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>원하는 날 ✅</th>
+              <th>가능한 날 👍</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 장소 추천 섹션 (모임 확정 후 표시) -->
+    <div id="locationSection" style="margin-top: 30px; display: none;">
+      <hr>
+      <h3>🗺️ 장소 추천</h3>
+      <div style="margin-bottom: 10px; display: flex;">
+        <input type="text" id="searchInput" placeholder="장소 또는 주소를 입력하세요 (예: 수성못 횟집)" style="flex-grow: 1; padding: 5px;">
+        <button id="searchBtn" style="padding: 5px 10px; margin-left: 5px;">검색</button>
+      </div>
+      <div id="map" style="width:100%;height:350px;border:1px solid #ddd;"></div>
+    </div>
+  </div>
+
+  <!-- 도움말 모달 -->
+  <div id="helpModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>Cal-U 사용법</h2>
+      <p>Cal-U는 여러 사람의 가능한 날짜를 손쉽게 취합하여 약속을 정하기 위한 서비스입니다.</p>
+      <br>
+      <h4>1. 모임 만들기 & 공유하기</h4>
+      <ul>
+        <li><strong>새 달력 만들기(➕):</strong> 새로운 모임을 위한 고유 PIN 번호를 생성합니다.</li>
+        <li><strong>링크 복사(🔗):</strong> 현재 캘린더의 주소를 복사하여 다른 사람들에게 공유하세요.</li>
+      </ul>
+      <h4>2. 날짜 선택하기</h4>
+      <ul>
+        <li><strong>이름 입력:</strong> 먼저 본인의 이름을 입력해주세요.</li>
+        <li><strong>날짜 클릭:</strong> 달력에서 가능한 날짜를 클릭하여 선택하세요.</li>
+        <li><strong>결과 제출:</strong> 선택을 완료한 후 '결과 제출하기' 버튼을 누르면 다른 사람들과 결과가 공유됩니다.</li>
+      </ul>
+      <h4>3. 결과 확인 및 확정</h4>
+      <ul>
+        <li><strong>중간 집계 보기:</strong> 모든 참여자가 제출한 결과를 바탕으로, 모두가 가능한 날과 일부만 가능한 날을 확인하세요.</li>
+        <li><strong>최종 확정:</strong> 모두가 가능한 날짜 중 하나를 클릭하여 모임을 최종 확정할 수 있습니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 스크립트는 body 끝에서 로드 -->
+  <script defer src="script.js" onerror="console.error('script.js 로딩 실패')"></script>
+</body>
+</html>
