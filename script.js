@@ -385,33 +385,45 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===============================================
+ // ===============================================
   // 5. 네이버 지도 초기화 및 검색 기능
   // ===============================================
-  function initMap() {
-    const map = new naver.maps.Map('map', {
-        center: new naver.maps.LatLng(35.8714, 128.6014),
-        zoom: 15
-    });
-    let currentMarker = null;
-    if (searchBtn) {
-      searchBtn.addEventListener('click', function () {
-        const query = searchInput.value;
-        if (!query) { alert('검색어를 입력해주세요.'); return; }
-        naver.maps.Service.geocode({ query: query }, function (status, response) {
-          if (status !== naver.maps.Service.Status.OK) { return alert('"' + query + '"에 대한 검색 결과가 없습니다.'); }
-          const result = response.v2;
-          const items = result.addresses;
-          if (items.length === 0) { return alert('"' + query + '"에 대한 검색 결과가 없습니다.'); }
-          const point = new naver.maps.LatLng(items[0].y, items[0].x);
-          if (currentMarker) { currentMarker.setMap(null); }
-          map.panTo(point);
-          currentMarker = new naver.maps.Marker({ position: point, map: map });
+  const map = new naver.maps.Map('map', {
+      center: new naver.maps.LatLng(35.8714, 128.6014),
+      zoom: 15
+  });
+
+  let currentMarker = null;
+
+  if (searchBtn) {
+    searchBtn.addEventListener('click', function () {
+      const query = searchInput.value;
+      if (!query) {
+        alert('검색어를 입력해주세요.');
+        return;
+      }
+
+      naver.maps.Service.geocode({ query: query }, function (status, response) {
+        if (status !== naver.maps.Service.Status.OK) {
+          return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
+        }
+        const result = response.v2;
+        const items = result.addresses;
+        if (items.length === 0) {
+          return alert('"' + query + '"에 대한 검색 결과가 없습니다.');
+        }
+        const point = new naver.maps.LatLng(items[0].y, items[0].x);
+        if (currentMarker) {
+          currentMarker.setMap(null);
+        }
+        map.panTo(point);
+        currentMarker = new naver.maps.Marker({
+          position: point,
+          map: map
         });
       });
-    }
+    });
   }
-  naver.maps.onJSContentLoaded = initMap;
 
   // --- 초기 렌더링 ---
   renderAll();
